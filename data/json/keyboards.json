@@ -1,10 +1,12 @@
 {
   "start": {
-    "start_use": "Начать"
-  },
-  "start_use": {
     "dynasties": "Династии",
     "creators": "Креаторы",
-    "content": "Авторский контент"
+    "content": "Авторский контент",
+    "add_author": "Добавить свой канал",
+    "help": "Помощь"
+  },
+  "add_author": {
+    "start_form": "Перейти к анкете"
   }
 }
