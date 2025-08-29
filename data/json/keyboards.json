@@ -1,10 +1,38 @@
 {
   "start": {
-    "dynasties": "Династии",
-    "creators": "Креаторы",
+    "": {
+      "dynasties": "Династии",
+      "creators": "Креаторы"
+    },
     "content": "Авторский контент",
     "add_author": "Добавить свой канал",
     "help": "Помощь"
+  },
+  "dynasties": {
+    "1": {
+      "genre_supernatural": "Сверхъестественное",
+      "genre_realism": "Реализм"
+    },
+    "2": {
+      "genre_historical": "Исторический",
+      "genre_fantasy": "Фэнтези"
+    },
+    "3": {
+      "genre_romance": "Романтика",
+      "genre_drama": "Драма"
+    },
+    "4": {
+      "genre_comedy": "Комедия",
+      "genre_detective": "Детектив"
+    },
+    "5": {
+      "genre_mystery": "Мистика",
+      "genre_horror": "Ужасы"
+    },
+    "6": {
+      "genre_family": "Семейный",
+      "genre_teen": "Подростковый"
+    }
   },
   "add_author": {
     "start_form": "Перейти к анкете"
