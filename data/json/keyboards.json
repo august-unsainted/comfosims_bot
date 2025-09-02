@@ -5,36 +5,51 @@
       "creators": "Креаторы"
     },
     "content": "Авторский контент",
-    "add_author": "Добавить свой канал",
-    "help": "Помощь"
+    "start_form": "Анкета",
+    "publications": "Ваши публикации",
+    "https://t.me/comfosims": "Техподдержка",
+    "developers": "О разработчиках"
   },
-  "dynasties": {
-    "1": {
-      "genre_supernatural": "Сверхъестественное",
-      "genre_realism": "Реализм"
-    },
-    "2": {
-      "genre_historical": "Исторический",
-      "genre_fantasy": "Фэнтези"
-    },
-    "3": {
-      "genre_romance": "Романтика",
-      "genre_drama": "Драма"
-    },
-    "4": {
-      "genre_comedy": "Комедия",
-      "genre_detective": "Детектив"
-    },
-    "5": {
-      "genre_mystery": "Мистика",
-      "genre_horror": "Ужасы"
-    },
-    "6": {
-      "genre_family": "Семейный",
-      "genre_teen": "Подростковый"
+  "publications": {
+    "": {
+      "start": "На главную",
+      "add": "Добавить"
     }
   },
-  "add_author": {
+  "add": {
     "start_form": "Перейти к анкете"
+  },
+  "creators_dynasties": {
+    "start": "На главную",
+    "filters": "Фильтры"
+  },
+  "start_form": {
+    "": {
+      "type": "Династия",
+      "content": "Креаторство"
+    }
+  },
+  "type": {
+    "type_1": "Сюжетная",
+    "type_2": "Геймплейная"
+  },
+  "genre": {
+    "genre_1": "Реализм",
+    "genre_2": "Сверхъестественное"
+  },
+  "levels": {
+    "level_1": "Мало",
+    "level_2": "Средне",
+    "level_3": "Много"
+  },
+  "preset": {
+    "preset_1": "Без пресета",
+    "preset_2": "Светлый пресет",
+    "preset_3": "Тёмный пресет"
+  },
+  "set_state": {
+    "edit": "Изменить ✏\uFE0F",
+    "update": "Всё верно ✅",
+    "start_form": "Назад"
   }
 }

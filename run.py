@@ -1,7 +1,6 @@
 import asyncio
-
 from aiogram import Bot, Dispatcher
-from handlers import start, admin, collections
+from handlers import admin, collections
 
 from config import TOKEN
 
@@ -10,7 +9,8 @@ dp = Dispatcher()
 
 
 async def main():
-    dp.include_routers(start.router, admin.router, collections.router, start.bot_config.router)
+    dp.include_routers(admin.router, collections.router)
+    collections.bot_config.include_routers(dp)
     await dp.start_polling(bot, skip_updates=True)
 
 
