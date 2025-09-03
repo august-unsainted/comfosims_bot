@@ -1,3 +1,4 @@
+from pathlib import Path
 from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.types import Message, CallbackQuery, InputMediaPhoto,InlineKeyboardMarkup, InlineKeyboardButton
@@ -25,7 +26,7 @@ class Channel(StatesGroup):
 
 
 states = ['title', 'link', 'description', 'media']
-states_groups = [Channel.link, Channel.description, Channel.media]
+states_groups = [Channel.title, Channel.link, Channel.description, Channel.media]
 
 
 def edit_keyboard(key: str, template_kb: str):
@@ -62,9 +63,10 @@ bot_config.load_messages()
 
 @router.callback_query(F.data.in_(('type', 'content')))
 async def add_publication(callback: CallbackQuery, state: FSMContext):
-    await callback.message.edit_text(**bot_config.messages.get(callback.data))
+    message = callback.message
+    await message.edit_text(**bot_config.messages.get(callback.data))
     channel_type = 'dynasty' if callback.data == 'type' else 'creator'
-    await state.update_data(message=callback.message.message_id, channel_type=channel_type)
+    await state.update_data(message=message.message_id, channel_type=channel_type, user=message.from_user.id)
 
 
 @router.callback_query(F.data.startswith(tuple(questions)))
@@ -115,7 +117,7 @@ async def set_media(message: Message, state: FSMContext):
         await message.bot.edit_message_text(text=bot_config.messages.get('media')['text'] + '\n\n<blockquote>Ошибка! Нет изображения</blockquote>',
                                             **args, **bot_config.default_args)
         return
-    photo_id = message.photo[0].file_id
+    photo_id = message.photo[-1].file_id
     await state.update_data(media=photo_id)
     publication = await get_publication({'media': photo_id, **data})
     await message.bot.edit_message_media(**publication, **args)
@@ -135,7 +137,7 @@ async def get_previous_state(callback: CallbackQuery, state: FSMContext):
     previous_key = states[index] if 0 <= index < len(states) else questions[-1]
     await callback.message.edit_text(**bot_config.messages.get(previous_key))
     if index >= 0:
-        await state.set_state(Channel.title if index == 0 else states_groups[index - 1])
+        await state.set_state(Channel.title if index == 0 else states_groups[index])
 
 
 @router.callback_query(F.data.endswith('update'))
@@ -144,7 +146,7 @@ async def update_state(callback: CallbackQuery, state: FSMContext):
     index = states.index(key) + 1
     next_key = states[index]
     await callback.message.edit_text(**bot_config.messages.get(next_key))
-    await state.set_state(states_groups[index - 1])
+    await state.set_state(states_groups[index])
 
 
 @router.callback_query(F.data.endswith('edit'))
@@ -177,10 +179,21 @@ async def set_title(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'send')
 async def send_publication(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    await state.clear()
     await bot_config.handle_edit_message(callback.message, bot_config.messages.get('send'))
-    await callback.message.bot.send_message(chat_id=ADMIN, text=str(data))
+    data = await state.get_data()
+    bot = callback.message.bot
+    media = data.get('media')
+    del data['message'], data['channel_type']
+    data['media'] = 1 if data.get('media') else 0
+    fields = ', '.join(list(data.keys()))
+    info = ', '.join([str(value) if key in questions else f"'{value}'" for key, value in data.items()])
+    pub_id = await db.execute_query(f"INSERT INTO dynasties ({fields}) VALUES ({info})")
+    if media:
+        photo_file = await bot.get_file(media)
+        photo_path = Path().cwd() / 'data/images' / f'{pub_id}.jpg'
+        await bot.download_file(photo_file.file_path, photo_path)
+    await state.clear()
+    await bot.send_message(chat_id=ADMIN, text=str(data))
 
 
 @router.callback_query(F.data == 'publications')
