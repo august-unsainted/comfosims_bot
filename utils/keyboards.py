@@ -1,3 +1,3 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from handlers.collections import bot_config
+from handlers.add_publication import bot_config
 

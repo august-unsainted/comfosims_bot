@@ -5,7 +5,6 @@
       "creators": "Креаторы"
     },
     "content": "Авторский контент",
-    "start_form": "Анкета",
     "publications": "Ваши публикации",
     "https://t.me/comfosims": "Техподдержка",
     "developers": "О разработчиках"
@@ -50,6 +49,18 @@
   "set_state": {
     "edit": "Изменить ✏\uFE0F",
     "update": "Всё верно ✅",
-    "start_form": "Назад"
+    "back": "Назад ⬅\uFE0F"
+  },
+  "media": {
+    "skip_media": "Пропустить",
+    "media_back": "Назад ⬅\uFE0F"
+  },
+  "check_publication": {
+    "send": "Отправить",
+    "set_title": "Заполнить заново"
+  },
+  "send": {
+    "start": "На главную",
+    "back": ""
   }
 }
