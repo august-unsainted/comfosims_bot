@@ -49,13 +49,13 @@
     "preset_3": "Тёмный пресет"
   },
   "set_state": {
-    "edit": "Изменить ✏\uFE0F",
-    "update": "Всё верно ✅",
-    "back": "Назад ⬅\uFE0F"
+    "edit_state": "Изменить ✏\uFE0F",
+    "update_state": "Всё верно ✅",
+    "back_state": "Назад ⬅\uFE0F"
   },
   "media": {
     "skip_media": "Пропустить",
-    "media_back": "Назад ⬅\uFE0F"
+    "media_back_state": "Назад ⬅\uFE0F"
   },
   "check_publication": {
     "send": "Отправить",
@@ -73,24 +73,49 @@
   },
   "content": {
     "1": {
-      "content_1": "Постройки", "content_2": "Персонажи"
+      "content_1": "Постройки",
+      "content_2": "Персонажи"
     },
     "2": {
-      "content_3": "Позы", "content_4": "Другое"
+      "content_3": "Позы",
+      "content_4": "Другое"
     },
     "3": {
-      "start_form": "Назад", "set_title": "Далее"
+      "start_form": "Назад",
+      "set_title": "Далее"
     }
   },
   "deny_confirm": {
-    "deny_send": "Отправить",
+    "deny_send": "Да, отправить",
     "deny": "Назад"
   },
-  "publication_denied": {
+  "denied": {
     "https://t.me/comfosims": "Связаться с техподержкой",
     "delete_message": "Понятно \uD83D\uDE22"
   },
   "accepted": {
     "delete_message": "Отлично!"
+  },
+  "my_publication": {
+    "edit": "Редактировать",
+    "confirm_delete": "Удалить",
+    "publications": "Назад"
+  },
+  "edit": {
+    "1": {
+      "title_edit_data": "Заголовок",
+      "link_edit_data": "Ссылка"
+    },
+    "2": {
+      "description_edit_data": "Описание",
+      "media_edit_data": "Изображение"
+    },
+    "publication": "Назад",
+    "back": ""
+  },
+  "confirm_delete": {
+    "delete": "Да, удалить",
+    "publication": "Назад",
+    "back": ""
   }
 }
