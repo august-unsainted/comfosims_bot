@@ -30,24 +30,6 @@
       "content": "Креаторство"
     }
   },
-  "type": {
-    "type_1": "Сюжетная",
-    "type_2": "Геймплейная"
-  },
-  "genre": {
-    "genre_1": "Реализм",
-    "genre_2": "Сверхъестественное"
-  },
-  "levels": {
-    "level_1": "Мало",
-    "level_2": "Средне",
-    "level_3": "Много"
-  },
-  "preset": {
-    "preset_1": "Без пресета",
-    "preset_2": "Светлый пресет",
-    "preset_3": "Тёмный пресет"
-  },
   "set_state": {
     "edit_state": "Изменить ✏\uFE0F",
     "update_state": "Всё верно ✅",
@@ -62,8 +44,7 @@
     "set_title": "Заполнить заново"
   },
   "send": {
-    "start": "На главную",
-    "back": ""
+    "start": "На главную"
   },
   "new_publication": {
     "": {
@@ -110,12 +91,10 @@
       "description_edit_data": "Описание",
       "media_edit_data": "Изображение"
     },
-    "publication": "Назад",
-    "back": ""
+    "publication": "Назад"
   },
   "confirm_delete": {
     "delete": "Да, удалить",
-    "publication": "Назад",
-    "back": ""
+    "publication": "Назад"
   }
 }

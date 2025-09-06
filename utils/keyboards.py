@@ -46,3 +46,20 @@ async def generate_edition_kb(state: FSMContext) -> InlineKeyboardMarkup:
     #     "set_pub": "Всё верно ✅",
     #     "edit":    "Назад ⬅\uFE0F"
     # },
+
+
+def load_questions():
+    data = bot_config.jsons.get('questions')
+    questions = data.pop('order')
+    for key, kb in data.items():
+        if key == 'levels_data':
+            bot_config.keyboards[f'{key}_level'] = edit_keyboard(key, 'levels')
+            continue
+        data = {f'{key}_{i + 1}': kb[i] for i in range(len(kb))}
+        question_index = questions.index(key)
+        if question_index > 0:
+            back = questions[question_index - 1]
+        else:
+            back = None
+        bot_config.keyboards[key] = bot_config.generate_kb(back, data)
+    return questions

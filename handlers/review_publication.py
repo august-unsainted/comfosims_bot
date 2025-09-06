@@ -75,7 +75,7 @@ async def confirm_deny(callback: CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.endswith('new_pub'))
 async def new_pub(callback: CallbackQuery):
     data = await select_publication('dynasties', callback)
-    text, args = create_admin_notification(data['id'], data)
+    text, args = create_admin_notification(data['id'], data, 'Новая публикация')
     await edit_message(callback.message, data, text, args['reply_markup'])
 
 

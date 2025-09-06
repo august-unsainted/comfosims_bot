@@ -1,11 +1,12 @@
 from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, InputMediaPhoto, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
+from config import ADMIN
 from handlers.add_publication import bot_config, db, continue_form
 from utils.keyboards import edit_keyboard, get_back_kb, generate_edition_kb
-from utils.publication_utils import select_publication, format_channel, get_photo
+from utils.publication_utils import select_publication, format_channel, get_photo, create_admin_notification
 
 router = Router()
 
@@ -31,7 +32,6 @@ async def view_publications(callback: CallbackQuery):
 @router.callback_query(F.data.endswith('publication'))
 async def get_publication(callback: CallbackQuery):
     table, pub_id = callback.data.split('_')[:2]
-    print(table, pub_id)
     pub = await select_publication(table, callback, pub_id)
     comment = f'Статус: {pub['status'].lower()}.'
     if pub['deny_reason']:
@@ -71,10 +71,12 @@ async def receive_data(message: Message, state: FSMContext):
 async def set_data(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     table, pub_id = data.get('table'), data.get('id')
+    pub = await select_publication(table, pub_id=pub_id)
     await db.execute_query(f"update {table} set {data.get('field')} = ?, status = 'На рассмотрении', deny_reason = NULL WHERE id = ?",
                            data.get('value'), pub_id)
-    text = bot_config.texts.get('send')
-    await callback.message.edit_text(text, reply_markup=get_back_kb(f'{table}_{pub_id}_publication'))
+    await callback.message.edit_text(bot_config.texts.get('send'), reply_markup=get_back_kb(f'{table}_{pub_id}_publication'))
+    text, args = create_admin_notification(data['id'], {**data, **pub}, 'Изменение')
+    await callback.bot.send_message(chat_id=ADMIN, text=text, **args)
     await state.clear()
 
 

@@ -4,7 +4,7 @@ from aiogram.types import InlineKeyboardMarkup, InputMediaPhoto, CallbackQuery, 
 from handlers.add_publication import db, bot_config, edit_keyboard
 
 
-async def select_publication(table: str, callback: CallbackQuery, pub_id: str = None) -> dict[str, str]:
+async def select_publication(table: str, callback: CallbackQuery = None, pub_id: str = None) -> dict[str, str]:
     pub_id = pub_id or callback.data.split('_')[0]
     data = await db.execute_query(f'select * from {table} where id = ?', pub_id)
     return dict(data[0])
@@ -29,8 +29,8 @@ async def prepare_message(data: dict[str, str]) -> dict[str, str | InlineKeyboar
     return {"text": text, "reply_markup": kb, **bot_config.default_args}
 
 
-def create_admin_notification(pub_id: int | str, data: dict[str, str]) -> tuple[str, dict]:
+def create_admin_notification(pub_id: int | str, data: dict[str, str], header: str) -> tuple[str, dict]:
     channel = format_channel(data, f'Автор: @{data['user_name']}')
-    text = f'<b>Новая династия</b>\n\n{channel}'
+    text = f'<b>{header}</b>\n\n{channel}'
     kb = edit_keyboard(pub_id, 'new_publication')
     return text, {'reply_markup': kb, 'parse_mode': 'HTML'}

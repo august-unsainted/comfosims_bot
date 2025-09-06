@@ -6,7 +6,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 from bot_config import bot_config, db
 from config import ADMIN
-from utils.keyboards import edit_keyboard, add_back_btn, get_back_kb
+from utils.keyboards import edit_keyboard, add_back_btn, get_back_kb, load_questions
 from utils.publication_utils import *
 
 router = Router()
@@ -23,15 +23,11 @@ class Channel(StatesGroup):
 
 states = ['title', 'link', 'description', 'media']
 states_groups = [Channel.title, Channel.link, Channel.description, Channel.media]
-# questions = ['type', 'genre', 'drama_level', 'text_level', 'preset']
-questions = ['type']
+questions = load_questions()
+# questions = ['type']
 
 
 def update_keyboards():
-    for level_key in ['drama', 'text']:
-        bot_config.keyboards[f'{level_key}_level'] = edit_keyboard(level_key, 'levels')
-    for data in questions[1:]:
-        add_back_btn(data, questions)
     for state in states:
         bot_config.keyboards[f'set_{state}'] = edit_keyboard(state, 'set_state')
         if state != 'media':
@@ -75,8 +71,8 @@ async def continue_form(message: Message, state: FSMContext, field_name: str = '
     header = messages.get(field_name)['text'].replace('Введите ', '').replace('ссылку', 'ссылка').capitalize()
     await message.delete()
     kb = kb or bot_config.keyboards.get(f'set_{field_name}')
-    await message.bot.edit_message_text(text=f'<b>{header}:</b>\n{message.html_text}\n\nВсё верно?', reply_markup=kb,
-                                        **args)
+    text = f'<b>{header}:</b>\n{message.html_text}\n\nВсё верно?'
+    await message.bot.edit_message_text(text=text, reply_markup=kb, **args)
 
 
 @router.message(StateFilter(Channel.title, Channel.link, Channel.description))
@@ -161,7 +157,7 @@ async def send_publication(callback: CallbackQuery, state: FSMContext):
     fields = ', '.join(list(data.keys()))
     info = ', '.join(['?'] * len(data.values()))
     pub_id = await db.execute_query(f"INSERT INTO dynasties ({fields}) VALUES ({info})", *data.values())
-    text, args = create_admin_notification(pub_id, data)
+    text, args = create_admin_notification(pub_id, data, 'Новая публикация')
     args['chat_id'] = ADMIN
     if media:
         await bot.send_photo(caption=text, photo=media, **args)
