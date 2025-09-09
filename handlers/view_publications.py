@@ -5,34 +5,40 @@ from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKe
 
 from config import ADMIN
 from handlers.add_publication import bot_config, db, continue_form
-from utils.keyboards import edit_keyboard, get_back_kb, generate_edition_kb
-from utils.publication_utils import select_publication, format_channel, get_photo, create_admin_notification, prepare_admin_message
+from utils.keyboards import edit_keyboard, get_back_kb, generate_edition_kb, get_pagination_kb
+from utils.publication_utils import select_publication, format_channel, get_photo, create_admin_notification, \
+    prepare_admin_message
 
 router = Router()
 
 
-@router.callback_query(F.data.endswith('publications'))
-async def view_publications(callback: CallbackQuery):
+async def get_page(user_id: int, i: int) -> InlineKeyboardMarkup:
     query_template = f"select id, title, date, 'table' as type from table where user_id = ?"
     queries = []
     for table in ['creators', 'dynasties']:
         queries.append(query_template.replace('table', table))
-    user = callback.from_user.id
     query = f'''select el.id as id, coalesce(edit.title, el.title) as title, coalesce(edit.date, el.date) as date,
-    el.type as type
-    from ({queries[0]} union {queries[1]})
-    el left join edition edit on el.id = edit.id and el.type = edit.table_name
-    order by date desc
-    '''
-    publications = await db.execute_query(query, user, user)
+        el.type as type
+        from ({queries[0]} union {queries[1]})
+        el left join edition edit on el.id = edit.id and el.type = edit.table_name
+        order by date desc
+        '''
+    publications = await db.execute_query(query, user_id, user_id)
     kb = []
-    for pub in publications:
+    for pub in publications[i:i + 5]:
         btn = InlineKeyboardButton(text=pub['title'], callback_data=f'{pub['type']}_{pub['id']}_publication')
         kb.append([btn])
+    kb.append(get_pagination_kb(i, len(publications)))
     kb.extend(bot_config.keyboards.get('publications').inline_keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=kb)
+
+
+@router.callback_query(F.data.endswith('publications'))
+async def view_publications(callback: CallbackQuery):
+    kb = await get_page(callback.from_user.id, 0)
     await bot_config.handle_edit_message(callback.message, {'text':         bot_config.messages.get('publications')[
                                                                                 'text'],
-                                                            'reply_markup': InlineKeyboardMarkup(inline_keyboard=kb)})
+                                                            'reply_markup': kb})
 
 
 @router.callback_query(F.data.endswith('publication'))
@@ -105,8 +111,9 @@ async def set_data(callback: CallbackQuery, state: FSMContext):
 async def confirm_delete(callback: CallbackQuery):
     table, pub_id = callback.data.split('_')[:2]
     kb = edit_keyboard(f'{table}_{pub_id}', 'confirm_delete')
-    await bot_config.handle_message(callback, {'text':         'Вы уверены, что хотите удалить публикацию? Отменить это действие нельзя',
-                                               'reply_markup': kb})
+    await bot_config.handle_message(callback,
+                                    {'text':         'Вы уверены, что хотите удалить публикацию? Отменить это действие нельзя',
+                                     'reply_markup': kb})
 
 
 @router.callback_query(F.data.endswith('delete'))
