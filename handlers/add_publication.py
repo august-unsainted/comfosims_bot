@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from aiogram import Router, F
 from aiogram.filters import StateFilter
 from aiogram.types import Message
@@ -6,7 +8,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 from bot_config import bot_config, db
 from config import ADMIN
-from utils.keyboards import edit_keyboard, add_back_btn, get_back_kb, load_questions
+from utils.keyboards import edit_keyboard, get_back_kb, load_questions, edit_content_kb, get_content_types
 from utils.publication_utils import *
 
 router = Router()
@@ -44,9 +46,15 @@ messages = bot_config.messages
 @router.callback_query(F.data.in_(('type', 'content')))
 async def add_publication(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(**messages.get(callback.data))
-    channel_type = 'dynasty' if callback.data == 'type' else 'creator'
+    channel_type = 'dynasties' if callback.data == 'type' else 'creators'
     await state.update_data(message=callback.message.message_id, channel_type=channel_type,
                             user_id=callback.from_user.id, user_name=callback.from_user.username)
+
+
+async def set_title(callback: CallbackQuery, state: FSMContext):
+    message = await bot_config.handle_message(callback, messages.get('title'))
+    await state.update_data(message=message.message_id)
+    await state.set_state(Channel.title)
 
 
 @router.callback_query(F.data.startswith(tuple(questions)))
@@ -54,12 +62,22 @@ async def questions_handler(callback: CallbackQuery, state: FSMContext):
     key, value = callback.data.rsplit('_', 1)
     index = questions.index(key) + 1
     await state.update_data(**{key: int(value)})
-    if index < len(questions):
-        next_data = questions[index]
-    else:
-        next_data = 'title'
-        await state.set_state(Channel.title)
+    if index >= len(questions):
+        await set_title(callback, state)
+        return
+    next_data = questions[index]
     await callback.message.edit_text(**messages.get(next_data))
+
+
+@router.callback_query(F.data.startswith('content'))
+async def get_content(callback: CallbackQuery):
+    await callback.message.edit_reply_markup(reply_markup=edit_content_kb(callback))
+
+
+@router.callback_query(F.data == 'set_content')
+async def set_content(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(content_types=get_content_types(callback.message.reply_markup))
+    await set_title(callback, state)
 
 
 async def continue_form(message: Message, state: FSMContext, field_name: str = '', kb: InlineKeyboardMarkup = None):
@@ -88,10 +106,8 @@ async def set_media(message: Message, state: FSMContext):
     data = await state.get_data()
     args = {'message_id': data['message'], 'chat_id': message.chat.id}
     if not message.photo:
-        await message.bot.edit_message_text(parse_mode='HTML',
-                                            text=messages.get('media')[
-                                                     'text'] + '\n\n<blockquote>Ошибка! Нет изображения</blockquote>',
-                                            **args)
+        text = messages.get('media')['text'] + '\n\n<blockquote>Ошибка! Нет изображения</blockquote>'
+        await message.bot.edit_message_text(parse_mode='HTML', text=text, **args)
         return
     photo_id = message.photo[-1].file_id
     await state.update_data(media=photo_id)
@@ -133,17 +149,15 @@ async def edit_state(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data == 'set_title')
-async def set_title(callback: CallbackQuery, state: FSMContext):
+async def set_title_state(callback: CallbackQuery, state: FSMContext):
     await state.set_state(None)
-    message = await bot_config.handle_message(callback, messages.get('title'))
-    await state.update_data(message=message.message_id)
-    await state.set_state(Channel.title)
+    await set_title(callback, state)
 
 
 @router.callback_query(F.data == 'send')
 async def send_publication(callback: CallbackQuery, state: FSMContext):
     await bot_config.handle_edit_message(callback.message, messages.get('send'))
-    data = await state.get_data() or {'message':     callback.message.message_id, 'channel_type': 'dynasty',
+    data = await state.get_data() or {'message':     callback.message.message_id, 'channel_type': 'dynasties',
                                       'user_id':     callback.from_user.id, 'user_name': callback.from_user.username,
                                       'type':        1,
                                       'title':       'Династия', 'link': 'https://t.me/comfothesimsbot',
@@ -151,17 +165,21 @@ async def send_publication(callback: CallbackQuery, state: FSMContext):
                                       'media':       'AgACAgIAAxkBAAIDrmi5nEg-fjxfdNqZ8ATmMy1aB72JAAKPATIbftDRSVuxhA6AvgHQAQADAgADeQADNgQ'}
     await state.clear()
     bot = callback.message.bot
-    media = data.pop('media')
-    del data['message'], data['channel_type']
+    media, table = data.pop('media'), data.pop('channel_type')
+    content_types = data.pop('content_types') if 'content_types' in data else []
+    del data['message']
     data['media'] = int(media is not None)
     fields = ', '.join(list(data.keys()))
     info = ', '.join(['?'] * len(data.values()))
-    pub_id = await db.execute_query(f"INSERT INTO dynasties ({fields}) VALUES ({info})", *data.values())
-    text, args = create_admin_notification(pub_id, data, 'Новая публикация')
-    args['chat_id'] = ADMIN
+    pub_id = await db.execute_query(f"INSERT INTO {table} ({fields}) VALUES ({info})", *data.values())
+    if table == 'creators':
+        db.cur.executemany("INSERT INTO creators_contents (creator, content) VALUES (?, ?)",
+                                 [(pub_id, content) for content in content_types])
+        db.db.commit()
+
     if media:
-        await bot.send_photo(caption=text, photo=media, **args)
         photo_file = await bot.get_file(media)
         await bot.download_file(photo_file.file_path, get_photo(pub_id).media.path)
-    else:
-        await bot.send_message(text=text, **args)
+
+    func, args = prepare_admin_message(table, pub_id, data, 'Новая публикация', bot)
+    await func(**args)

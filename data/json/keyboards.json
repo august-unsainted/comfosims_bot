@@ -63,8 +63,9 @@
     },
     "3": {
       "start_form": "Назад",
-      "set_title": "Далее"
-    }
+      "set_content": "Далее"
+    },
+    "back": ""
   },
   "deny_confirm": {
     "deny_send": "Да, отправить",
@@ -91,10 +92,12 @@
       "description_edit_data": "Описание",
       "media_edit_data": "Изображение"
     },
-    "publication": "Назад"
+    "publication": "Назад",
+    "back": ""
   },
   "confirm_delete": {
     "delete": "Да, удалить",
-    "publication": "Назад"
+    "publication": "Назад",
+    "back": ""
   }
 }

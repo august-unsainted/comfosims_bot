@@ -1,7 +1,7 @@
 from copy import deepcopy
 
 from aiogram.fsm.context import FSMContext
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from bot_config import bot_config
 
 
@@ -26,10 +26,12 @@ def get_back_kb(callback: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[get_back(callback)])
 
 
-def add_back_btn(key: str, questions: list[str]) -> None:
-    kb = bot_config.keyboards.get(key).inline_keyboard
-    index = questions.index(key)
-    kb.append(get_back(questions[index - 1]))
+def get_previous_question(key: str, questions: list[str]) -> str | None:
+    if key in questions:
+        index = questions.index(key)
+        if index > 0:
+            return questions[index - 1]
+    return None
 
 
 async def generate_edition_kb(state: FSMContext) -> InlineKeyboardMarkup:
@@ -48,18 +50,39 @@ async def generate_edition_kb(state: FSMContext) -> InlineKeyboardMarkup:
     # },
 
 
+def edit_content_kb(callback: CallbackQuery) -> InlineKeyboardMarkup:
+    callback, keyboard = callback.data, callback.message.reply_markup.inline_keyboard
+    for i in range(len(keyboard)):
+        for j in range(len(keyboard[i])):
+            if keyboard[i][j].callback_data == callback:
+                btn = keyboard[i][j].text
+                new_text = btn.replace('✅ ', '') if btn.startswith('✅') else f'✅ {btn}'
+                keyboard[i][j].text = new_text
+                break
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def get_content_types(kb: InlineKeyboardMarkup) -> list[str]:
+    result = []
+    for row in kb.inline_keyboard:
+        for btn in row:
+            if btn.text.startswith('✅'):
+                result.append(btn.callback_data.replace('content_', ''))
+    return result
+
+
 def load_questions():
     data = bot_config.jsons.get('questions')
     questions = data.pop('order')
     for key, kb in data.items():
         if key == 'levels_data':
-            bot_config.keyboards[f'{key}_level'] = edit_keyboard(key, 'levels')
+            for callback in kb:
+                temp_kb = edit_keyboard(callback, 'levels')
+                prev = get_previous_question(callback, questions)
+                temp_kb.inline_keyboard.append(get_back(prev))
+                bot_config.keyboards[f'{callback}_level'] = temp_kb
             continue
         data = {f'{key}_{i + 1}': kb[i] for i in range(len(kb))}
-        question_index = questions.index(key)
-        if question_index > 0:
-            back = questions[question_index - 1]
-        else:
-            back = None
-        bot_config.keyboards[key] = bot_config.generate_kb(back, data)
+        prev = get_previous_question(key, questions) or 'start_form'
+        bot_config.keyboards[key] = bot_config.generate_kb(prev, data)
     return questions
