@@ -13,12 +13,18 @@ router = Router()
 
 @router.callback_query(F.data.endswith('publications'))
 async def view_publications(callback: CallbackQuery):
-    query_template = f'select id, title, date, "table" as type from table where user_id = ?'
+    query_template = f"select id, title, date, 'table' as type from table where user_id = ?"
     queries = []
     for table in ['creators', 'dynasties']:
         queries.append(query_template.replace('table', table))
     user = callback.from_user.id
-    publications = await db.execute_query(' union '.join(queries) + ' order by date desc', user, user)
+    query = f'''select el.id as id, coalesce(edit.title, el.title) as title, coalesce(edit.date, el.date) as date,
+    el.type as type
+    from ({queries[0]} union {queries[1]})
+    el left join edition edit on el.id = edit.id and el.type = edit.table_name
+    order by date desc
+    '''
+    publications = await db.execute_query(query, user, user)
     kb = []
     for pub in publications:
         btn = InlineKeyboardButton(text=pub['title'], callback_data=f'{pub['type']}_{pub['id']}_publication')
