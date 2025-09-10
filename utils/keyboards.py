@@ -2,7 +2,7 @@ from copy import deepcopy
 
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
-from bot_config import bot_config
+from bot_config import bot_config, entries_on_page
 
 
 def get_btn(text: str, callback: str) -> InlineKeyboardButton:
@@ -86,10 +86,3 @@ def load_questions():
         prev = get_previous_question(key, questions) or 'start_form'
         bot_config.keyboards[key] = bot_config.generate_kb(prev, data)
     return questions
-
-
-def get_pagination_kb(index: int, length: int) -> list[InlineKeyboardButton]:
-    back_cb = str(index - 1) if index > 0 else 'null'
-    next_cb = str(index + 1) if index < length else 'null'
-    return [get_btn('◀️', back_cb), get_btn(f'{index + 1}/{length}', 'placeholder'),
-            get_btn('▶️', next_cb)]
