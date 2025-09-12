@@ -69,7 +69,7 @@ def get_content_types(kb: InlineKeyboardMarkup) -> list[str]:
     for row in kb.inline_keyboard:
         for btn in row:
             if btn.text.startswith('✅'):
-                result.append(btn.callback_data.replace('content_', ''))
+                result.append(btn.callback_data.split('_')[-1])
     return result
 
 

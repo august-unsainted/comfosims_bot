@@ -6,7 +6,7 @@ from aiogram.types import Message, CallbackQuery
 from config import ADMIN
 from handlers.add_publication import bot_config, db, continue_form
 from utils.keyboards import edit_keyboard, get_back_kb, generate_edition_kb
-from utils.publication_utils import select_publication, format_channel, get_photo, create_admin_notification, prepare_admin_message
+from utils.publication_utils import select_publication, create_admin_notification, prepare_admin_message
 
 
 router = Router()

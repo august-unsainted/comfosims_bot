@@ -1,10 +1,13 @@
+import validators
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 from bot_config import entries_on_page
 from config import ADMIN
 from handlers.add_publication import bot_config, db
-from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb
+from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb, get_content_types, get_back, get_back_kb, \
+    edit_content_kb
 from utils.publication_utils import select_publication, format_channel, get_photo
 
 router = Router()
@@ -69,17 +72,38 @@ async def get_publication(callback: CallbackQuery):
         await callback.message.edit_text(format_channel(pub, comment), parse_mode='HTML', reply_markup=kb)
 
 
-@router.callback_query(F.data.endswith('dynasties'))
-async def view_dynasties(callback: CallbackQuery):
-    dynasties = await db.execute_query('select * from dynasties order by date desc')
-    page = int(callback.data.split('_')[0]) if '_' in callback.data else 1
-    curr_dynasty = dict(dynasties[page - 1])
+@router.callback_query(F.data.endswith(('dynasties', 'creators')))
+async def view_dynasties(callback: CallbackQuery, state: FSMContext):
+    splited = callback.data.split('_')
+    table = splited[-1]
+    data = await state.get_data()
+    filters = data.get(f'{table}_filters')
+    if filters:
+        filters = ' '.join(filters)
+        await db.execute_query(f'''
+            INSERT INTO filters (user_id, {table})
+            VALUES (?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+            {table} = excluded.{table};
+        ''', callback.from_user.id, filters)
+    entries = data.get(table)
+    if not entries:
+        entries = await db.execute_query(f'select * from {table} order by date desc')
+        await state.update_data(**{table: entries})
+    page = int(splited[0]) if '_' in callback.data else 1
+    curr_dynasty = dict(entries[page - 1])
 
-    kb = [[InlineKeyboardButton(text='Подписаться', url=curr_dynasty['link'])]]
+    link = curr_dynasty['link']
+    if not validators.url(link):
+        if link.startswith('@'):
+            link = link.replace('@', 'https://t.me/', 1)
+        else:
+            link = 'https://t.me/comfosims'
+    kb = [[InlineKeyboardButton(text='Подписаться', url=link)]]
     if callback.message.chat.id == ADMIN:
-        kb.append([get_btn('Удалить', f'dynasties_{curr_dynasty['id']}_delete')])
-    kb.append(get_pagination_kb('dynasties', page, len(dynasties), 1))
-    kb.append([get_btn('На главную', 'start'), get_btn('Фильтры', 'filters')])
+        kb.append([get_btn('Удалить', f'{table}_{curr_dynasty['id']}_delete')])
+    kb.append(get_pagination_kb(table, page, len(entries), 1))
+    kb.append([get_btn('На главную', 'start'), get_btn('Фильтры', f'{table}_filters')])
 
     text = format_channel(curr_dynasty)
     args = {'reply_markup': InlineKeyboardMarkup(inline_keyboard=kb)}
@@ -88,3 +112,33 @@ async def view_dynasties(callback: CallbackQuery):
     else:
         args['text'] = text
     await bot_config.handle_message(callback, args)
+
+
+@router.callback_query(F.data.endswith('filters'))
+async def get_filters(callback: CallbackQuery):
+    table = callback.data.split('_')[0]
+    kb = None
+    if table == 'creators':
+        kb = edit_keyboard('set_filters', 'content')
+        kb.inline_keyboard.insert(-2, [get_btn('Сортировка', f'{table}_sort')])
+        kb.inline_keyboard[-2] = [get_btn('Назад', table), get_btn('Сбросить всё', 'reset_filters_creators')]
+
+    await bot_config.handle_message(callback, {'text': bot_config.texts.get('filters'), 'reply_markup': kb or get_back_kb('start')})
+
+
+@router.callback_query(F.data.startswith('set_filters_content'))
+async def update_filters(callback: CallbackQuery, state: FSMContext):
+    kb = edit_content_kb(callback)
+    await callback.message.edit_reply_markup(reply_markup=kb)
+    await state.update_data(creators_filters=get_content_types(kb))
+
+
+@router.callback_query(F.data.startswith('reset_filters'))
+async def reset_filters(callback: CallbackQuery):
+    table = callback.split('_')[-1]
+
+
+@router.callback_query(F.data.endswith('sort'))
+async def get_sort(callback: CallbackQuery):
+    pass
+
