@@ -1,8 +1,10 @@
 from copy import deepcopy
+from math import ceil
 
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from bot_config import bot_config, entries_on_page
+from config import ADMIN
 
 
 def get_btn(text: str, callback: str) -> InlineKeyboardButton:
@@ -86,3 +88,13 @@ def load_questions():
         prev = get_previous_question(key, questions) or 'start_form'
         bot_config.keyboards[key] = bot_config.generate_kb(prev, data)
     return questions
+
+
+def get_pagination_kb(key: str, page: int, length: int, on_page: int = 0) -> list[InlineKeyboardButton]:
+    if on_page == 0:
+        on_page = entries_on_page
+    pages_count = ceil(length / on_page)
+    back_cb = f'{page - 1}_{key}' if page > 1 else 'null'
+    next_cb = f'{page + 1}_{key}' if page < pages_count else 'null'
+    return [get_btn('◀️', back_cb), get_btn(f'{page}/{pages_count}', 'publications'),
+            get_btn('▶️', next_cb)]

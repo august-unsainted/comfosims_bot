@@ -12,23 +12,6 @@ from utils.publication_utils import select_publication, format_channel, get_phot
 router = Router()
 
 
-@router.callback_query(F.data.endswith('publication'))
-async def get_publication(callback: CallbackQuery):
-    table, pub_id = callback.data.split('_')[:2]
-    pub = await select_publication(table, callback, pub_id)
-    edited_pub = await db.execute_query('select * from edition where table_name = ? and id = ?', table, pub_id)
-    if edited_pub:
-        pub = {**pub, **edited_pub[0]}
-    comment = f'Статус: {pub['status'].lower()}.'
-    if pub.get('deny_reason'):
-        comment += f'\nПричина: {pub['deny_reason']}.'
-    kb = edit_keyboard(f'{table}_{pub_id}', 'my_publication')
-    if pub.get('media'):
-        await callback.message.edit_media(media=get_photo(pub_id, format_channel(pub, comment)), reply_markup=kb)
-    else:
-        await callback.message.edit_text(format_channel(pub, comment), parse_mode='HTML', reply_markup=kb)
-
-
 @router.callback_query(F.data.endswith('edit'))
 async def edit_publication(callback: CallbackQuery):
     table, pub_id = callback.data.split('_')[:2]
