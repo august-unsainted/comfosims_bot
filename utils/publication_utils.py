@@ -49,3 +49,7 @@ def prepare_admin_message(table: str, pub_id: str | int, data: dict[str, any], h
         return bot.send_photo, {'caption': text, 'photo': get_photo(pub_id, '').media, **args}
         # await bot.send_photo(caption=text, photo=get_photo(pub_id, '').media, **args)
     return bot.send_message, {'text': text, **args}
+
+
+def split(callback: CallbackQuery) -> list[str]:
+    return callback.data.split('_')

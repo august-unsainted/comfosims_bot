@@ -1,14 +1,17 @@
+import sqlite3
+
 import validators
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaPhoto
 
 from bot_config import entries_on_page
 from config import ADMIN
 from handlers.add_publication import bot_config, db
-from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb, get_content_types, get_back, get_back_kb, \
-    edit_content_kb
-from utils.publication_utils import select_publication, format_channel, get_photo
+from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb, get_content_types, get_back_kb, \
+    edit_content_kb, get_sort_kb
+from utils.publication_utils import select_publication, format_channel, get_photo, split
 
 router = Router()
 
@@ -35,6 +38,25 @@ async def get_page(user_id: int, page: int) -> InlineKeyboardMarkup:
     kb.append(get_pagination_kb('publications', page, len(publications)))
     kb.extend(bot_config.keyboards.get('publications').inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=kb)
+
+
+def get_creators_filters(selected: str = None):
+    kb_markup = edit_keyboard('set_filters', 'content')
+    kb = kb_markup.inline_keyboard
+    del kb[-1]
+    has_filters = bool(selected)
+    if has_filters:
+        selected = selected.split(', ')
+    for i in range(len(kb)):
+        for j in range(len(kb[i])):
+            if (has_filters and kb[i][j].callback_data.endswith(tuple(selected))) or not has_filters:
+                kb[i][j].text = '✅ ' + kb[i][j].text
+    kb.insert(-1, [get_btn('Сортировка', f'creators_sort')])
+    kb[-1] = [get_btn('Назад', 'creators'), get_btn('Сбросить всё', 'creators_reset_filters')]
+    return kb_markup
+
+
+creators_filters_kb = get_creators_filters()
 
 
 @router.callback_query(F.data.endswith('publications'))
@@ -72,6 +94,19 @@ async def get_publication(callback: CallbackQuery):
         await callback.message.edit_text(format_channel(pub, comment), parse_mode='HTML', reply_markup=kb)
 
 
+@router.callback_query(F.data.contains('reset'))
+async def reset_filters(callback: CallbackQuery, state: FSMContext):
+    table, *_, data_type = split(callback)
+    if data_type == 'filters':
+        await state.update_data(**{f'{table}_sort': None})
+    await state.update_data(**{f'{table}_{data_type}': None})
+    try:
+        await callback.message.edit_reply_markup(reply_markup=creators_filters_kb if data_type == 'filters' else get_sort_kb(table))
+    except TelegramBadRequest:
+        if callback.message.reply_markup == get_sort_kb(table):
+            await callback.answer('Сортировка уже сброшена!')
+
+
 @router.callback_query(F.data.endswith(('dynasties', 'creators')))
 async def view_dynasties(callback: CallbackQuery, state: FSMContext):
     splited = callback.data.split('_')
@@ -79,13 +114,26 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     filters = data.get(f'{table}_filters')
     if filters:
-        filters = ' '.join(filters)
+        filters = ', '.join(filters)
+        sort = data.get(f'{table}_sort') or ''
         await db.execute_query(f'''
-            INSERT INTO filters (user_id, {table})
-            VALUES (?, ?)
+            INSERT INTO filters (user_id, {table}, {table}_sort)
+            VALUES (?, ?, ?)
             ON CONFLICT(user_id) DO UPDATE SET
-            {table} = excluded.{table};
-        ''', callback.from_user.id, filters)
+            {table} = excluded.{table},
+            {table}_sort = excluded.{table}_sort;
+        ''', callback.from_user.id, filters, sort)
+        data_dict = {f'{table}_filters': None}
+        if table == 'creators':
+            data_dict['creators'] = await db.execute_query(f'''
+            SELECT DISTINCT c.*
+            FROM creators c JOIN creators_contents cc
+            ON c.id = cc.creator
+            WHERE cc.content IN ({filters})
+            ORDER BY date {sort}
+            ''')
+        await state.update_data(**data_dict)
+
     entries = data.get(table)
     if not entries:
         entries = await db.execute_query(f'select * from {table} order by date desc')
@@ -115,13 +163,18 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
 
 
 @router.callback_query(F.data.endswith('filters'))
-async def get_filters(callback: CallbackQuery):
+async def get_filters(callback: CallbackQuery, state: FSMContext):
     table = callback.data.split('_')[0]
+    data = await state.get_data()
+    filters = data.get(f'{table}_filters')
+    if not filters:
+        query_res = await db.execute_query(f'select {table} from filters where user_id = ?', callback.from_user.id)
+        if query_res:
+            filters = query_res[0][table]
+
     kb = None
     if table == 'creators':
-        kb = edit_keyboard('set_filters', 'content')
-        kb.inline_keyboard.insert(-2, [get_btn('Сортировка', f'{table}_sort')])
-        kb.inline_keyboard[-2] = [get_btn('Назад', table), get_btn('Сбросить всё', 'reset_filters_creators')]
+        kb = get_creators_filters(filters) if filters else creators_filters_kb
 
     await bot_config.handle_message(callback, {'text': bot_config.texts.get('filters'), 'reply_markup': kb or get_back_kb('start')})
 
@@ -133,12 +186,20 @@ async def update_filters(callback: CallbackQuery, state: FSMContext):
     await state.update_data(creators_filters=get_content_types(kb))
 
 
-@router.callback_query(F.data.startswith('reset_filters'))
-async def reset_filters(callback: CallbackQuery):
-    table = callback.split('_')[-1]
-
-
 @router.callback_query(F.data.endswith('sort'))
 async def get_sort(callback: CallbackQuery):
-    pass
+    table = callback.data.split('_')[0]
+    await callback.message.edit_text(text=bot_config.texts.get('sort'), reply_markup=get_sort_kb(table))
+
+
+@router.callback_query(F.data.endswith('first'))
+async def set_sort(callback: CallbackQuery, state: FSMContext):
+    table = split(callback)[0]
+    try:
+        kb = edit_content_kb(callback, True)
+        await callback.message.edit_reply_markup(reply_markup=kb)
+        await state.update_data({f'{table}_sort': 'desc' if 'new' in callback.data else ''})
+    except TelegramBadRequest:
+        await callback.answer('Этот тип сортировки уже выбран!')
+    # await state.update_data({f'{table}_sort': })
 

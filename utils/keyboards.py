@@ -52,15 +52,22 @@ async def generate_edition_kb(state: FSMContext) -> InlineKeyboardMarkup:
     # },
 
 
-def edit_content_kb(callback: CallbackQuery) -> InlineKeyboardMarkup:
+def edit_content_kb(callback: CallbackQuery, single_select: bool = False) -> InlineKeyboardMarkup:
     callback, keyboard = callback.data, callback.message.reply_markup.inline_keyboard
     for i in range(len(keyboard)):
         for j in range(len(keyboard[i])):
+            btn = keyboard[i][j]
+            text = btn.text
+            selected = text.startswith('✅')
+            unselect = text.replace('✅ ', '')
             if keyboard[i][j].callback_data == callback:
-                btn = keyboard[i][j].text
-                new_text = btn.replace('✅ ', '') if btn.startswith('✅') else f'✅ {btn}'
-                keyboard[i][j].text = new_text
-                break
+                if single_select:
+                    btn.text = f'✅ {unselect}'
+                else:
+                    btn.text = unselect if selected else f'✅ {text}'
+                    break
+            elif single_select and selected:
+                btn.text = unselect
     return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
@@ -98,3 +105,10 @@ def get_pagination_kb(key: str, page: int, length: int, on_page: int = 0) -> lis
     next_cb = f'{page + 1}_{key}' if page < pages_count else 'null'
     return [get_btn('◀️', back_cb), get_btn(f'{page}/{pages_count}', 'publications'),
             get_btn('▶️', next_cb)]
+
+
+def get_sort_kb(table: str) -> InlineKeyboardMarkup:
+    kb = edit_keyboard(table, 'sort')
+    default_sort = kb.inline_keyboard[0][0]
+    default_sort.text = '✅ ' + default_sort.text
+    return kb
