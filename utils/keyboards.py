@@ -4,7 +4,6 @@ from math import ceil
 from aiogram.fsm.context import FSMContext
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from bot_config import bot_config, entries_on_page
-from config import ADMIN
 
 
 def get_btn(text: str, callback: str) -> InlineKeyboardButton:
@@ -45,11 +44,6 @@ async def generate_edition_kb(state: FSMContext) -> InlineKeyboardMarkup:
         [get_btn('Назад ⬅\uFE0F', f'{pub_info}_edit')]
     ]
     return InlineKeyboardMarkup(inline_keyboard=kb)
-    # "set_pub": {
-    #     "set":     "Изменить ✏\uFE0F",
-    #     "set_pub": "Всё верно ✅",
-    #     "edit":    "Назад ⬅\uFE0F"
-    # },
 
 
 def edit_content_kb(callback: CallbackQuery, single_select: bool = False) -> InlineKeyboardMarkup:
@@ -107,8 +101,30 @@ def get_pagination_kb(key: str, page: int, length: int, on_page: int = 0) -> lis
             get_btn('▶️', next_cb)]
 
 
-def get_sort_kb(table: str) -> InlineKeyboardMarkup:
+async def get_sort_kb(table: str, user: int) -> InlineKeyboardMarkup:
     kb = edit_keyboard(table, 'sort')
-    default_sort = kb.inline_keyboard[0][0]
-    default_sort.text = '✅ ' + default_sort.text
+    query_res = await bot_config.db.execute_query(f'select {table}_sort from filters where user_id = ?', user)
+    sort = query_res[0][f'{table}_sort'] if query_res else 'desc'
+    index = int(not sort)
+    selected_option = kb.inline_keyboard[index][0]
+    selected_option.text = '✅ ' + selected_option.text
     return kb
+
+
+def get_creators_filters(selected: str = None):
+    kb_markup = edit_keyboard('set_filters', 'content')
+    kb = kb_markup.inline_keyboard
+    del kb[-1]
+    has_filters = bool(selected)
+    if has_filters:
+        selected = selected.split(', ')
+    for i in range(len(kb)):
+        for j in range(len(kb[i])):
+            if (has_filters and kb[i][j].callback_data.endswith(tuple(selected))) or not has_filters:
+                kb[i][j].text = '✅ ' + kb[i][j].text
+    kb.insert(-1, [get_btn('Сортировка', f'creators_sort')])
+    kb[-1] = [get_btn('Назад', 'creators'), get_btn('Сбросить всё', 'creators_reset_filters')]
+    return kb_markup
+
+
+bot_config.keyboards['creators_filters'] = get_creators_filters()
