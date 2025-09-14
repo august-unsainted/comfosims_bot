@@ -101,16 +101,6 @@ def get_pagination_kb(key: str, page: int, length: int, on_page: int = 0) -> lis
             get_btn('▶️', next_cb)]
 
 
-async def get_sort_kb(table: str, user: int) -> InlineKeyboardMarkup:
-    kb = edit_keyboard(table, 'sort')
-    query_res = await bot_config.db.execute_query(f'select {table}_sort from filters where user_id = ?', user)
-    sort = query_res[0][f'{table}_sort'] if query_res else 'desc'
-    index = int(not sort)
-    selected_option = kb.inline_keyboard[index][0]
-    selected_option.text = '✅ ' + selected_option.text
-    return kb
-
-
 def get_creators_filters(selected: str = None):
     kb_markup = edit_keyboard('set_filters', 'content')
     kb = kb_markup.inline_keyboard

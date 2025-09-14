@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardBut
 from bot_config import entries_on_page
 from config import ADMIN
 from handlers.add_publication import bot_config, db
-from handlers.filters import get_filters
+from handlers.filters import save_filters
 from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb
 from utils.publication_utils import select_publication, format_channel, get_photo, split
 
@@ -72,19 +72,7 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
     table = splited[-1]
     data = await state.get_data()
     entries = data.get(table)
-    filters = data.get(f'{table}_filters')
-    sort = data.get(f'{table}_sort') or ''
-    if filters:
-        await db.execute_query(f'''
-            INSERT INTO filters (user_id, {table}, {table}_sort)
-            VALUES (?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-            {table} = excluded.{table},
-            {table}_sort = excluded.{table}_sort;
-        ''', callback.from_user.id, filters, sort)
-        await state.update_data(**{f'{table}_filters': None})
-    else:
-        filters = await get_filters(data, table, callback.from_user.id)
+    filters, sort = await save_filters(data, table, callback.from_user.id, state)
 
     if entries is None or filters:
         query = f'select * from {table} order by date desc'
