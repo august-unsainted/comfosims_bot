@@ -8,7 +8,7 @@ from config import ADMIN
 from handlers.add_publication import bot_config, db
 from handlers.filters import save_filters
 from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb
-from utils.publication_utils import select_publication, format_channel, get_photo, split
+from utils.publication_utils import select_publication, format_channel, get_photo, split, get_link
 
 router = Router()
 
@@ -94,12 +94,7 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
         page = int(splited[0]) if '_' in callback.data else 1
         curr_dynasty = dict(entries[page - 1])
         text = format_channel(curr_dynasty)
-        link = curr_dynasty['link']
-        if not validators.url(link):
-            if link.startswith('@'):
-                link = link.replace('@', 'https://t.me/', 1)
-            else:
-                link = 'https://t.me/comfosims'
+        link = get_link(curr_dynasty['link'])
         kb.append([InlineKeyboardButton(text='Подписаться', url=link)])
         if callback.message.chat.id == ADMIN:
             kb.append([get_btn('Удалить', f'{table}_{curr_dynasty['id']}_delete')])

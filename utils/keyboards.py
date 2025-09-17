@@ -80,13 +80,13 @@ def load_questions():
     for key, kb in data.items():
         if key == 'levels_data':
             for callback in kb:
-                temp_kb = edit_keyboard(callback, 'levels')
-                prev = get_previous_question(callback, questions)
-                temp_kb.inline_keyboard.append(get_back(prev))
+                temp_kb = edit_keyboard(callback, 'level')
+                prev = get_previous_question(f'{callback}_level', questions)
+                temp_kb.inline_keyboard[-1] = get_back(prev)
                 bot_config.keyboards[f'{callback}_level'] = temp_kb
             continue
         data = {f'{key}_{i + 1}': kb[i] for i in range(len(kb))}
-        prev = get_previous_question(key, questions) or 'start_form'
+        prev = get_previous_question(key, questions) or 'add'
         bot_config.keyboards[key] = bot_config.generate_kb(prev, data)
     return questions
 

@@ -17,14 +17,11 @@
     },
     "back": ""
   },
-  "add": {
-    "start_form": "Перейти к анкете"
-  },
   "creators_dynasties": {
     "start": "На главную",
     "filters": "Фильтры"
   },
-  "start_form": {
+  "add": {
     "": {
       "type": "Династия",
       "content": "Креаторство"
@@ -62,7 +59,7 @@
       "content_4": "Другое"
     },
     "3": {
-      "start_form": "Назад",
+      "add": "Назад",
       "set_content": "Далее"
     },
     "back": ""

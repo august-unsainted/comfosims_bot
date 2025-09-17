@@ -8,7 +8,7 @@ from aiogram.fsm.state import StatesGroup, State
 
 from bot_config import bot_config, db
 from config import ADMIN
-from utils.keyboards import edit_keyboard, get_back_kb, load_questions, edit_content_kb, get_content_types
+from utils.keyboards import edit_keyboard, get_back_kb, load_questions, edit_content_kb, get_content_types, get_back
 from utils.publication_utils import *
 
 router = Router()
@@ -51,17 +51,26 @@ async def add_publication(callback: CallbackQuery, state: FSMContext):
                             user_id=callback.from_user.id, user_name=callback.from_user.username)
 
 
-async def set_title(callback: CallbackQuery, state: FSMContext):
-    message = await bot_config.handle_message(callback, messages.get('title'))
-    await state.update_data(message=message.message_id)
+async def set_title(callback: CallbackQuery, state: FSMContext, back: str = ''):
+    message = messages.get('title')
+    if back:
+        kb = message['reply_markup'].inline_keyboard
+        kb[0][0].callback_data = 'content'
+    edited_message = await bot_config.handle_message(callback, message)
+    await state.update_data(message=edited_message.message_id)
     await state.set_state(Channel.title)
 
 
 @router.callback_query(F.data.startswith(tuple(questions)))
 async def questions_handler(callback: CallbackQuery, state: FSMContext):
-    key, value = callback.data.rsplit('_', 1)
-    index = questions.index(key) + 1
-    await state.update_data(**{key: int(value)})
+    if callback.data[-1].isdigit():
+        key, value = callback.data.rsplit('_', 1)
+        await state.update_data(**{key: int(value)})
+        index = questions.index(key) + 1
+    else:
+        key = callback.data
+        index = questions.index(key)
+
     if index >= len(questions):
         await set_title(callback, state)
         return
@@ -76,8 +85,12 @@ async def get_content(callback: CallbackQuery):
 
 @router.callback_query(F.data == 'set_content')
 async def set_content(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(content_types=get_content_types(callback.message.reply_markup))
-    await set_title(callback, state)
+    content_types = get_content_types(callback.message.reply_markup)
+    if not content_types:
+        await callback.answer('Выберите как минимум 1 тип')
+        return
+    await state.update_data(content_types=content_types)
+    await set_title(callback, state, 'content')
 
 
 async def continue_form(message: Message, state: FSMContext, field_name: str = '', kb: InlineKeyboardMarkup = None):
@@ -89,6 +102,8 @@ async def continue_form(message: Message, state: FSMContext, field_name: str = '
     header = messages.get(field_name)['text'].replace('Введите ', '').replace('ссылку', 'ссылка').capitalize()
     await message.delete()
     kb = kb or bot_config.keyboards.get(f'set_{field_name}')
+    if data.get('channel_type') == 'creators':
+        kb.inline_keyboard[-1][0].callback_data = 'content'
     text = f'<b>{header}:</b>\n{message.html_text}\n\nВсё верно?'
     await message.bot.edit_message_text(text=text, reply_markup=kb, **args)
 

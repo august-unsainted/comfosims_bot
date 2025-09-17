@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import validators
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, InputMediaPhoto, CallbackQuery, FSInputFile
 
@@ -19,7 +20,8 @@ def get_photo(pub_id: int | str, text: str = '') -> InputMediaPhoto:
 
 
 def format_channel(data: dict[str, str], comment: str = '') -> str:
-    text = bot_config.jsons['messages'].get('channel').format(data['title'], data['link'], data['description'])
+    link = get_link(data['link'])
+    text = bot_config.jsons['messages'].get('channel').format(data['title'], link, data['description'])
     return text + '\n\n' + comment
 
 
@@ -53,3 +55,12 @@ def prepare_admin_message(table: str, pub_id: str | int, data: dict[str, any], h
 
 def split(callback: CallbackQuery) -> list[str]:
     return callback.data.split('_')
+
+
+def get_link(link: str) -> str:
+    if not validators.url(link):
+        if link.startswith('@'):
+            link = link.replace('@', 'https://t.me/', 1)
+        else:
+            link = 'https://t.me/comfosims'
+    return link
