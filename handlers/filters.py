@@ -1,13 +1,10 @@
-from typing import Any, Coroutine
-
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup
 
-from handlers.add_publication import bot_config, db
-from utils.keyboards import get_content_types, get_back_kb, edit_content_kb, get_creators_filters, \
-    edit_keyboard
+from bot_config import config, db
+from utils.keyboards import get_content_types, get_back_kb, edit_content_kb, get_btn
 from utils.publication_utils import split
 
 router = Router()
@@ -46,13 +43,32 @@ async def save_filters(data: dict, table: str, user: id, state: FSMContext) -> t
 
 
 async def get_sort_kb(table: str, user: int, state: FSMContext) -> InlineKeyboardMarkup:
-    kb = edit_keyboard(table, 'sort')
+    kb = config.edit_keyboard(table, 'sort')
     data = await state.get_data()
     sort = await get_filters(data, table, user, 'sort')
     index = int(not sort)
     selected_option = kb.inline_keyboard[index][0]
     selected_option.text = '✅ ' + selected_option.text
     return kb
+
+
+def get_creators_filters(selected: str = None):
+    kb_markup = config.edit_keyboard('set_filters', 'content')
+    kb = kb_markup.inline_keyboard
+    del kb[-1]
+    has_filters = bool(selected)
+    if has_filters:
+        selected = selected.split(', ')
+    for i in range(len(kb)):
+        for j in range(len(kb[i])):
+            if (has_filters and kb[i][j].callback_data.endswith(tuple(selected))) or not has_filters:
+                kb[i][j].text = '✅ ' + kb[i][j].text
+    kb.insert(-1, [get_btn('Сортировка', f'creators_sort')])
+    kb[-1] = [get_btn('Назад', 'creators'), get_btn('Сбросить всё', 'creators_reset_filters')]
+    return kb_markup
+
+
+config.keyboards['creators_filters'] = get_creators_filters()
 
 
 @router.callback_query(F.data.contains('reset'))
@@ -62,7 +78,7 @@ async def reset_filters(callback: CallbackQuery, state: FSMContext):
     if is_filters:
         await state.update_data(**{f'{table}_sort': 'desc'})
     await state.update_data(**{f'{table}_{data_type}': '1, 2, 3, 4'})
-    kb = bot_config.keyboards.get('creators_filters') if is_filters else await get_sort_kb(table, 0, state)
+    kb = config.keyboards.get('creators_filters') if is_filters else await get_sort_kb(table, 0, state)
     try:
         await callback.message.edit_reply_markup(reply_markup=kb)
     except TelegramBadRequest:
@@ -77,10 +93,10 @@ async def receive_filters(callback: CallbackQuery, state: FSMContext):
     if table == 'creators' and filters:
         kb = get_creators_filters(filters)
     else:
-        kb = bot_config.keyboards.get(f'{table}_filters')
+        kb = config.keyboards.get(f'{table}_filters')
 
-    await bot_config.handle_message(callback, {'text':         bot_config.texts.get('filters'),
-                                               'reply_markup': kb or get_back_kb('start')})
+    await config.handle_message(callback, {'text':         config.texts.get('filters'),
+                                           'reply_markup': kb or get_back_kb('start')})
 
 
 @router.callback_query(F.data.startswith('set_filters_content'))
@@ -96,7 +112,7 @@ async def get_sort(callback: CallbackQuery, state: FSMContext):
     user = callback.from_user.id
     # await save_filters({}, table, user, state)
     kb = await get_sort_kb(table, user, state)
-    await callback.message.edit_text(text=bot_config.texts.get('sort'), reply_markup=kb)
+    await callback.message.edit_text(text=config.texts.get('sort'), reply_markup=kb)
 
 
 @router.callback_query(F.data.endswith('first'))

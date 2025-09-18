@@ -2,11 +2,10 @@ from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 
-from bot_config import entries_on_page
+from bot_config import config, db
 from config import ADMIN
-from handlers.add_publication import bot_config, db
 from handlers.filters import save_filters
-from utils.keyboards import get_btn, edit_keyboard, get_pagination_kb
+from utils.keyboards import get_btn, get_pagination_kb
 from utils.publication_utils import select_publication, format_channel, get_photo, split, get_link
 
 router = Router()
@@ -26,13 +25,13 @@ async def get_page(user_id: int, page: int) -> InlineKeyboardMarkup:
     publications = await db.execute_query(query, user_id, user_id)
     kb = []
     i = page - 1
-    start = i * entries_on_page
-    end = start + entries_on_page
+    start = i * config.entries_on_page
+    end = start + config.entries_on_page
     for pub in publications[start:end]:
         btn = InlineKeyboardButton(text=pub['title'], callback_data=f'{pub['type']}_{pub['id']}_publication')
         kb.append([btn])
-    kb.append(get_pagination_kb('publications', page, len(publications)))
-    kb.extend(bot_config.keyboards.get('publications').inline_keyboard)
+    kb.append(get_pagination_kb('publications', page, len(publications), config.entries_on_page))
+    kb.extend(config.keyboards.get('publications').inline_keyboard)
     return InlineKeyboardMarkup(inline_keyboard=kb)
 
 
@@ -43,8 +42,8 @@ async def view_publications(callback: CallbackQuery):
     else:
         page = 1
     kb = await get_page(callback.from_user.id, int(page))
-    text = bot_config.texts.get('publications')
-    await bot_config.handle_edit_message(callback.message, {'text': text, 'reply_markup': kb})
+    text = config.texts.get('publications')
+    await config.handle_edit_message(callback.message, {'text': text, 'reply_markup': kb})
 
 
 @router.callback_query(F.data.endswith('publication'))
@@ -57,7 +56,7 @@ async def get_publication(callback: CallbackQuery):
     comment = f'Статус: {pub['status'].lower()}.'
     if pub.get('deny_reason'):
         comment += f'\nПричина: {pub['deny_reason']}.'
-    kb = edit_keyboard(f'{table}_{pub_id}', 'my_publication')
+    kb = config.edit_keyboard(f'{table}_{pub_id}', 'my_publication')
 
     if pub.get('media'):
         await callback.message.edit_media(media=get_photo(pub_id, format_channel(pub, comment)), reply_markup=kb)
@@ -88,7 +87,7 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
     kb = []
     args = {}
     if not entries:
-        args['text'] = bot_config.texts.get('no_publications')
+        args['text'] = config.texts.get('no_publications')
     else:
         page = int(splited[0]) if '_' in callback.data else 1
         curr_dynasty = dict(entries[page - 1])
@@ -103,7 +102,7 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
         else:
             args['text'] = text
     kb.append([get_btn('На главную', 'start'), get_btn('Фильтры', f'{table}_filters')])
-    await bot_config.handle_message(callback, {**args, 'reply_markup': InlineKeyboardMarkup(inline_keyboard=kb)})
+    await config.handle_message(callback, {**args, 'reply_markup': InlineKeyboardMarkup(inline_keyboard=kb)})
 
 
 @router.callback_query(F.data == 'null')

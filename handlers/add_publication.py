@@ -1,14 +1,8 @@
-from datetime import datetime
-
 from aiogram import Router, F
 from aiogram.filters import StateFilter
-from aiogram.types import Message
-from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 
-from bot_config import bot_config, db
-from config import ADMIN
-from utils.keyboards import edit_keyboard, get_back_kb, load_questions, edit_content_kb, get_content_types, get_back
+from utils.keyboards import edit_content_kb, get_content_types
 from utils.publication_utils import *
 
 router = Router()
@@ -25,30 +19,16 @@ class Channel(StatesGroup):
 
 states = ['title', 'link', 'description', 'media']
 states_groups = [Channel.title, Channel.link, Channel.description, Channel.media]
-questions = load_questions()
-# questions = ['type']
-
-
-def update_keyboards():
-    for state in states:
-        bot_config.keyboards[f'set_{state}'] = edit_keyboard(state, 'set_state')
-        if state != 'media':
-            cb = questions[-1] if state == 'title' else state + '_back_state'
-            bot_config.keyboards[state] = get_back_kb(cb)
-    bot_config.keyboards['title_creator'] = get_back_kb('content')
-    bot_config.load_messages()
-
-
-update_keyboards()
-messages = bot_config.messages
+messages, texts, questions = config.messages, config.texts, config.questions
 
 
 @router.callback_query(F.data.in_(('type', 'content')))
 async def add_publication(callback: CallbackQuery, state: FSMContext):
     await callback.message.edit_text(**messages.get(callback.data))
     channel_type = 'dynasties' if callback.data == 'type' else 'creators'
+    user = callback.from_user
     await state.update_data(message=callback.message.message_id, channel_type=channel_type,
-                            user_id=callback.from_user.id, user_name=callback.from_user.username)
+                            user_id=user.id, user_name=user.username)
 
 
 async def set_title(callback: CallbackQuery, state: FSMContext, back: str = ''):
@@ -56,7 +36,7 @@ async def set_title(callback: CallbackQuery, state: FSMContext, back: str = ''):
     if back:
         kb = message['reply_markup'].inline_keyboard
         kb[0][0].callback_data = 'content'
-    edited_message = await bot_config.handle_message(callback, message)
+    edited_message = await config.handle_message(callback, message)
     await state.update_data(message=edited_message.message_id)
     await state.set_state(Channel.title)
 
@@ -93,21 +73,6 @@ async def set_content(callback: CallbackQuery, state: FSMContext):
     await set_title(callback, state, 'content')
 
 
-async def continue_form(message: Message, state: FSMContext, field_name: str = '', kb: InlineKeyboardMarkup = None):
-    data = await state.get_data()
-    if field_name == '':
-        field_name = data['field']
-    await state.update_data(**{field_name: message.html_text})
-    args = {'chat_id': message.chat.id, 'message_id': data.get('message'), 'parse_mode': 'HTML'}
-    header = messages.get(field_name)['text'].replace('Введите ', '').replace('ссылку', 'ссылка').capitalize()
-    await message.delete()
-    kb = kb or bot_config.keyboards.get(f'set_{field_name}')
-    if data.get('channel_type') == 'creators':
-        kb.inline_keyboard[-1][0].callback_data = 'content'
-    text = f'<b>{header}:</b>\n{message.html_text}\n\nВсё верно?'
-    await message.bot.edit_message_text(text=text, reply_markup=kb, **args)
-
-
 @router.message(StateFilter(Channel.title, Channel.link, Channel.description))
 async def get_channel_info(message: Message, state: FSMContext):
     current_state = await state.get_state()
@@ -121,7 +86,7 @@ async def set_media(message: Message, state: FSMContext):
     data = await state.get_data()
     args = {'message_id': data['message'], 'chat_id': message.chat.id}
     if not message.photo:
-        text = messages.get('media')['text'] + '\n\n<blockquote>Ошибка! Нет изображения</blockquote>'
+        text = texts.get('media') + '\n\n<blockquote>Ошибка! Нет изображения</blockquote>'
         await message.bot.edit_message_text(parse_mode='HTML', text=text, **args)
         return
     photo_id = message.photo[-1].file_id
@@ -164,7 +129,7 @@ async def set_title_state(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == 'send')
 async def send_publication(callback: CallbackQuery, state: FSMContext):
-    await bot_config.handle_edit_message(callback.message, messages.get('send'))
+    await config.handle_edit_message(callback.message, messages.get('send'))
     data = await state.get_data() or {'message':     callback.message.message_id, 'channel_type': 'dynasties',
                                       'user_id':     callback.from_user.id, 'user_name': callback.from_user.username,
                                       'type':        1,
@@ -172,7 +137,6 @@ async def send_publication(callback: CallbackQuery, state: FSMContext):
                                       'description': 'Род Морено начался с <b>Софии</b> — амбициозной художницы, приехавшей в город без денег и связей. Её упорство позволило построить первый дом, а картины стали приносить стабильный доход. Позже к ней присоединился Даниэль, музыкант со свободным характером. Их союз положил начало династии: дети унаследовали талант к искусству и <u>желание добиться большего</u>.',
                                       'media':       'AgACAgIAAxkBAAIDrmi5nEg-fjxfdNqZ8ATmMy1aB72JAAKPATIbftDRSVuxhA6AvgHQAQADAgADeQADNgQ'}
     await state.clear()
-    print(data)
     bot = callback.message.bot
     media, table = data.pop('media'), data.pop('channel_type')
     content_types = data.pop('content_types') if 'content_types' in data else []
