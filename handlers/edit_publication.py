@@ -6,8 +6,7 @@ from aiogram.types import Message, CallbackQuery
 from config import ADMIN
 from handlers.add_publication import bot_config, db, continue_form
 from utils.keyboards import edit_keyboard, get_back_kb, generate_edition_kb
-from utils.publication_utils import select_publication, create_admin_notification, prepare_admin_message
-
+from utils.publication_utils import select_publication, create_admin_notification, prepare_admin_message, get_link
 
 router = Router()
 
@@ -48,6 +47,8 @@ async def set_data(callback: CallbackQuery, state: FSMContext):
     values = [data.get(field) or pub.get(field) for field in fields]
     existing_entry = await db.execute_query('select * from edition where table_name = ? and id = ?', table, pub_id)
     if existing_entry:
+        if data['field'] == 'link':
+            data['value'] = get_link(data['value'])
         await db.execute_query(f'update edition set {data['field']} = ? where id = ? and table_name = ?',
                                data['value'], pub_id, table)
     else:

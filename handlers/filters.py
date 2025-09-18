@@ -74,9 +74,10 @@ async def reset_filters(callback: CallbackQuery, state: FSMContext):
 async def receive_filters(callback: CallbackQuery, state: FSMContext):
     table = callback.data.split('_')[0]
     filters = await get_filters(await state.get_data(), table, callback.from_user.id)
-    kb = None
-    if table == 'creators':
-        kb = get_creators_filters(filters) if filters else bot_config.keyboards.get('creators_filters')
+    if table == 'creators' and filters:
+        kb = get_creators_filters(filters)
+    else:
+        kb = bot_config.keyboards.get(f'{table}_filters')
 
     await bot_config.handle_message(callback, {'text':         bot_config.texts.get('filters'),
                                                'reply_markup': kb or get_back_kb('start')})

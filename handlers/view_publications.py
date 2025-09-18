@@ -1,4 +1,3 @@
-import validators
 from aiogram import Router, F
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -39,7 +38,7 @@ async def get_page(user_id: int, page: int) -> InlineKeyboardMarkup:
 
 @router.callback_query(F.data.endswith('publications'))
 async def view_publications(callback: CallbackQuery):
-    if '_' in callback.data and not callback.data.startswith('dynasties'):
+    if '_' in callback.data and callback.data[0].isdigit():
         page = split(callback)[0]
     else:
         page = 1

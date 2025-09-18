@@ -130,13 +130,6 @@ async def set_media(message: Message, state: FSMContext):
     await message.bot.edit_message_media(**publication, **args)
 
 
-@router.callback_query(F.data == 'skip_media')
-async def skip_message(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(media=None)
-    data = await state.get_data()
-    await callback.message.edit_text(**(await prepare_message(data)))
-
-
 @router.callback_query(F.data.endswith('back_state'))
 async def get_previous_state(callback: CallbackQuery, state: FSMContext):
     key = callback.data.split('_')[0]
@@ -179,6 +172,7 @@ async def send_publication(callback: CallbackQuery, state: FSMContext):
                                       'description': 'Род Морено начался с <b>Софии</b> — амбициозной художницы, приехавшей в город без денег и связей. Её упорство позволило построить первый дом, а картины стали приносить стабильный доход. Позже к ней присоединился Даниэль, музыкант со свободным характером. Их союз положил начало династии: дети унаследовали талант к искусству и <u>желание добиться большего</u>.',
                                       'media':       'AgACAgIAAxkBAAIDrmi5nEg-fjxfdNqZ8ATmMy1aB72JAAKPATIbftDRSVuxhA6AvgHQAQADAgADeQADNgQ'}
     await state.clear()
+    print(data)
     bot = callback.message.bot
     media, table = data.pop('media'), data.pop('channel_type')
     content_types = data.pop('content_types') if 'content_types' in data else []

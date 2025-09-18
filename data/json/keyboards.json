@@ -33,7 +33,6 @@
     "back_state": "Назад ⬅\uFE0F"
   },
   "media": {
-    "skip_media": "Пропустить",
     "media_back_state": "Назад ⬅\uFE0F"
   },
   "check_publication": {
@@ -100,6 +99,25 @@
   "sort": {
     "new_first": "Сначала новые",
     "old_first": "Сначала старые",
-    "": {"filters":  "Назад", "reset_sort":  "Сбросить"}
+    "": {
+      "filters": "Назад",
+      "reset_sort": "Сбросить"
+    }
+  },
+  "dynasties_filters": {
+    "1": {
+      "type": "Тип",
+      "genre": "Жанр"
+    },
+    "2": {
+      "preset": "Пресет",
+      "drama": "Драма"
+    },
+    "text": "Размер постов",
+    "sort": "Сортировка",
+    "3": {
+      "start": "Назад",
+      "dynasties_reset_filters": "Сбросить всё"
+    }
   }
 }
