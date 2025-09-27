@@ -57,11 +57,7 @@ async def get_publication(callback: CallbackQuery):
     if pub.get('deny_reason'):
         comment += f'\nПричина: {pub['deny_reason']}.'
     kb = config.edit_keyboard(f'{table}_{pub_id}', 'my_publication')
-
-    if pub.get('media'):
-        await callback.message.edit_media(media=get_photo(pub_id, format_channel(pub, comment)), reply_markup=kb)
-    else:
-        await callback.message.edit_text(format_channel(pub, comment), parse_mode='HTML', reply_markup=kb)
+    await callback.message.edit_media(media=get_photo(pub_id, format_channel(pub, comment)), reply_markup=kb)
 
 
 @router.callback_query(F.data.endswith(('dynasties', 'creators')))
@@ -97,7 +93,7 @@ async def view_dynasties(callback: CallbackQuery, state: FSMContext):
         if callback.message.chat.id == ADMIN:
             kb.append([get_btn('Удалить', f'{table}_{curr_dynasty['id']}_delete')])
         kb.append(get_pagination_kb(table, page, len(entries), 1))
-        if entries and curr_dynasty.get('media'):
+        if entries:
             args['media'] = get_photo(curr_dynasty['id'], text)
         else:
             args['text'] = text

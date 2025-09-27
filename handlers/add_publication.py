@@ -17,9 +17,7 @@ class Channel(StatesGroup):
     message = State()
 
 
-states = ['title', 'link', 'description', 'media']
-states_groups = [Channel.title, Channel.link, Channel.description, Channel.media]
-messages, texts, questions = config.messages, config.texts, config.questions
+messages, texts, questions, states = config.messages, config.texts, config.questions, config.states
 
 
 @router.callback_query(F.data.in_(('type', 'content')))
@@ -102,7 +100,7 @@ async def get_previous_state(callback: CallbackQuery, state: FSMContext):
     previous_key = states[index] if 0 <= index < len(states) else questions[-1]
     await callback.message.edit_text(**messages.get(previous_key))
     if index >= 0:
-        await state.set_state(Channel.title if index == 0 else states_groups[index])
+        await state.set_state(Channel.title if index == 0 else getattr(Channel, states[index]))
 
 
 @router.callback_query(F.data.endswith('update_state'))
@@ -111,7 +109,7 @@ async def update_state(callback: CallbackQuery, state: FSMContext):
     index = states.index(key) + 1
     next_key = states[index]
     await callback.message.edit_text(**messages.get(next_key))
-    await state.set_state(states_groups[index])
+    await state.set_state(getattr(Channel, next_key))
 
 
 @router.callback_query(F.data.endswith('edit_state'))
@@ -141,18 +139,15 @@ async def send_publication(callback: CallbackQuery, state: FSMContext):
     media, table = data.pop('media'), data.pop('channel_type')
     content_types = data.pop('content_types') if 'content_types' in data else []
     del data['message']
-    data['media'] = int(media is not None)
     fields = ', '.join(list(data.keys()))
     info = ', '.join(['?'] * len(data.values()))
     pub_id = await db.execute_query(f"INSERT INTO {table} ({fields}) VALUES ({info})", *data.values())
     if table == 'creators':
         db.cur.executemany("INSERT INTO creators_contents (creator, content) VALUES (?, ?)",
-                                 [(pub_id, content) for content in content_types])
+                           [(pub_id, content) for content in content_types])
         db.db.commit()
 
-    if media:
-        photo_file = await bot.get_file(media)
-        await bot.download_file(photo_file.file_path, get_photo(pub_id).media.path)
-
+    photo_file = await bot.get_file(media)
+    await bot.download_file(photo_file.file_path, get_photo(pub_id).media.path)
     func, args = prepare_admin_message(table, pub_id, data, 'Новая публикация', bot)
     await func(**args)
